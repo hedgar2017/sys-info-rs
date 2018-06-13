@@ -13,16 +13,15 @@ use std::io::{self, Read};
 use std::fs::File;
 use std::os::raw::c_char;
 
-#[cfg(target_os = "macos")]
-use libc::sysctl;
-use libc::timeval;
-use std::mem::size_of_val;
-use std::ptr::null_mut;
+#[cfg(target_os = "macos")] use libc::sysctl;
+#[allow(unused_imports)] use libc::timeval;
+#[allow(unused_imports)] use std::mem::size_of_val;
+#[allow(unused_imports)] use std::ptr::null_mut;
 
 use std::collections::HashMap;
 
-static MAC_CTL_KERN: libc::c_int = 1;
-static MAC_KERN_BOOTTIME: libc::c_int = 21;
+#[allow(dead_code)] static MAC_CTL_KERN: libc::c_int = 1;
+#[allow(dead_code)] static MAC_KERN_BOOTTIME: libc::c_int = 21;
 
 /// System load average value.
 #[repr(C)]
@@ -402,6 +401,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(not(windows))]
     pub fn test_boottime() {
         let bt = boottime().unwrap();
         println!("boottime(): {} {}", bt.tv_sec, bt.tv_usec);
