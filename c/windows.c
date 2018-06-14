@@ -8,15 +8,15 @@
 
 #define LEN 20
 #define MAXPROCESSES 1024
-static const char *os_type = "Windows";
 
-/* Internal Declarations */
+/* Internal declarations */
 static double calculate_cpu_load(unsigned long long, unsigned long long);
 static unsigned long long file_time_to_ull(const FILETIME);
 
-/* Get information */
+/* External definitions */
+
 const char *get_os_type(void) {
-	return os_type;
+	return "Windows";
 }
 
 const char *get_os_release(void) {
@@ -121,10 +121,12 @@ DiskInfo get_disk_info(void) {
 	return di;
 }
 
+double get_uptime(void) {
+    return ((double) GetTickCount64()) * 1E-3;
+}
 
 /* Internal definitions */
-double calculate_cpu_load(unsigned long long idle_ticks,
-			  unsigned long long total_ticks) {
+double calculate_cpu_load(unsigned long long idle_ticks, unsigned long long total_ticks) {
 	static unsigned long long _prev_total_ticks = 0;
 	static unsigned long long _prev_idle_ticks = 0;
 	unsigned long long total_ticks_since_last_time = total_ticks -
@@ -144,7 +146,3 @@ unsigned long long file_time_to_ull(const FILETIME ft) {
 	return (((unsigned long long)(ft.dwHighDateTime)) << 32) |
 		((unsigned long long)ft.dwLowDateTime);
 }
-	
-	
-
-

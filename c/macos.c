@@ -10,16 +10,16 @@
 #define LEN 20
 #define MNT_IGNORE 0
 
-/* Internal Declarations */
-static size_t regetmntinfo(struct statfs **mntbufp,
-			   long mntsize, const char **vfslist);
+/* Internal declarations */
+static size_t regetmntinfo(struct statfs **mntbufp, long mntsize, const char **vfslist);
 static const char **makevfslist(char *fslist);
 static int checkvfsname(const char *vfsname, const char **vfslist);
 static char *makenetvfslist(void);
 
 static int skipvfs;
 
-/* Get information */
+/* External definitions */
+
 const char *get_os_type(void) {
 	char *s, buf[LEN];
 	size_t len;
@@ -174,6 +174,19 @@ DiskInfo get_disk_info(void) {
 	return di;
 }
 
+double get_uptime(void) {
+	struct timeval boottime;
+    size_t len = sizeof(boottime);
+    int mib[2] = {CTL_KERN, KERN_BOOTTIME};
+    if (sysctl(mib, 2, &boottime, &len, NULL, 0) < 0) {
+        return -1.0;
+    }
+
+    time_t secs_current = time(NULL);
+    time_t secs_boot = ((double) tv.tv_sec) + ((double) tv.tv_usec) * 1E-6;
+    return difftime(secs_current, secs_boot);
+}
+
 /* Internal definitions */
 const char **makevfslist(char *fslist) {
 	const char **av;
@@ -285,6 +298,3 @@ char *makenetvfslist(void){
 	free(listptr);
 	return (str);
 }
-
-
-	

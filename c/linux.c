@@ -6,15 +6,13 @@
 
 #include "info.h"
 
-#define DFHASHSIZE 101
-#define MOUNTS "/proc/mounts"
-static const char *os_type = "Windows";
-
-/* Internal Declarations */
+/* Internal declarations */
 struct nlist {
 	struct nlist *next;
 	char *name;
 };
+
+#define DFHASHSIZE 101
 
 static struct nlist *DFhashvector[DFHASHSIZE];
 unsigned int DFhash(const char*);
@@ -23,17 +21,14 @@ void DFcleanup(void);
 int remote_mount(const char*, const char*);
 float device_space(char*, char*, double*, double*);
 
+/* External definitions */
 
-/* Get information */
-/*
-  get_os_type & get_os_release
-  /proc/sys/kernel
-*/
-
+// /proc/sys/kernel/ostype
 const char *get_os_type(void) {
-	return os_type;
+	return "";
 }
 
+// /proc/sys/kernel/osrelease
 const char *get_os_release(void) {
 	return "";
 }
@@ -42,37 +37,25 @@ unsigned int get_cpu_num(void) {
 	return get_nprocs();
 }
 
-
-/*
-  get_cpu_speed
-  /sys/devices/system/cpu/cpu0
-*/
-
+// /proc/cpuinfo
 unsigned long get_cpu_speed(void) {
     return 0;
 }
 
-/*
-  get_loadavg & get_proc_total
-  /proc/loadavg
-*/
-
+// /proc/loadavg
 LoadAvg get_loadavg(void) {
-    LoadAvg avg;
+    LoadAvg avg = {0};
     return avg;
 }
 
+// /proc/loadavg
 unsigned long get_proc_total(void) {
     return 0;
 }
 
-/*
-  get_mem_info
-  /proc/meminfo
-*/
-
+// /proc/meminfo
 MemInfo get_mem_info(void) {
-    MemInfo info;
+    MemInfo info = {0};
     return info;
 }
 
@@ -87,7 +70,7 @@ DiskInfo get_disk_info(void) {
 	di.total = 0;
 	di.free = 0;
 
-	mounts = fopen(MOUNTS,"r");
+	mounts = fopen("/proc/mounts", "r");
 	if (!mounts) {
 		return di;
 	}
@@ -121,7 +104,12 @@ DiskInfo get_disk_info(void) {
 	return di;
 }
 
-/* Internal Definitions */
+// /proc/uptime
+double get_uptime(void) {
+    return 0;
+}
+
+/* Internal definitions */
 unsigned int DFhash(const char *s)
 {
 	unsigned int hashval;
@@ -159,8 +147,7 @@ struct nlist * seen_before(const char *name)
 void DFcleanup()
 {
 	struct nlist *np, *next;
-	int i;
-	for (i=0; i<DFHASHSIZE; i++) {
+	for (int i = 0; i < DFHASHSIZE; i++) {
 		/* Non-standard for loop. Note the last clause happens at the end of the loop. */
 		for (np = DFhashvector[i]; np; np=next) {
 			next=np->next;
@@ -189,7 +176,7 @@ float device_space(char *mount, char *device, double *total_size, double *total_
 	double free;
 	double size;
 	/* The percent used: used/total * 100 */
-	float pct=0.0;
+	float pct = 0.0;
 
 	/* Avoid multiply-mounted disks - not done in df. */
 	if (seen_before(device)) return pct;
@@ -200,7 +187,7 @@ float device_space(char *mount, char *device, double *total_size, double *total_
 	}
 
 	free = svfs.f_bavail;
-	size  = svfs.f_blocks;
+	size = svfs.f_blocks;
 	blocksize = svfs.f_bsize;
 	/* Keep running sum of total used, free local disk space. */
 	*total_size += size * blocksize;
@@ -209,6 +196,3 @@ float device_space(char *mount, char *device, double *total_size, double *total_
 	pct = size ? ((size - free) / (float) size) * 100 : 0.0;
 	return pct;
 }
-
-
-
