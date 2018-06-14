@@ -1,6 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <linux/sysctl.h>
+#include <errno.h>
+
 #include <sys/sysinfo.h>
 #include <sys/statvfs.h>
 
@@ -12,6 +18,7 @@ struct nlist {
 	char *name;
 };
 
+#define BUFLEN 256
 #define DFHASHSIZE 101
 
 static struct nlist *DFhashvector[DFHASHSIZE];
@@ -23,14 +30,22 @@ float device_space(char*, char*, double*, double*);
 
 /* External definitions */
 
-// /proc/sys/kernel/ostype
+/*
+    Dummy function.
+    /proc/sys/kernel/ostype
+    is used directly from Rust.
+*/
 const char *get_os_type(void) {
-	return "";
+    return NULL;
 }
 
-// /proc/sys/kernel/osrelease
+/*
+    Dummy function.
+    /proc/sys/kernel/osrelease
+    is used directly from Rust.
+*/
 const char *get_os_release(void) {
-	return "";
+	return NULL;
 }
 
 unsigned int get_cpu_num(void) {

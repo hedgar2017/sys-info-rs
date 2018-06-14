@@ -4,7 +4,22 @@
 
 // /proc/sys/kernel/ostype
 const char *get_os_type(void) {
-	return "FreeBSD";
+	char *oldval = (char*) malloc(BUFLEN * sizeof(char));
+    size_t oldval_size = BUFLEN;
+    int name[] = {CTL_KERN, KERN_OSTYPE};
+
+    struct __sysctl_args args;
+    memset(&args, 0, sizeof(struct __sysctl_args));
+    args.name = name;
+    args.nlen = sizeof(name) / sizeof(name[0]);
+    args.oldval = oldval;
+    args.oldlenp = &oldval_size;
+
+    if (syscall(SYS__sysctl, &args) == -1) {
+        printf("%d\n", errno);
+        return NULL;
+    }
+    return oldval;
 }
 
 // /proc/sys/kernel/osrelease
