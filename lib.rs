@@ -383,6 +383,6 @@ mod test {
     pub fn test_uptime() {
         let uptime = uptime().unwrap();
         println!("uptime()          : {}", uptime);
-        assert!(uptime > 0);
+        assert!(uptime > 0.0);
     }
 }

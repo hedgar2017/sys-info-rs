@@ -1,12 +1,10 @@
 #include "info.h"
 
-static const char *os_type = "Linux";
-
 /* External definitions */
 
 // /proc/sys/kernel/ostype
 const char *get_os_type(void) {
-	return os_type;
+	return "FreeBSD";
 }
 
 // /proc/sys/kernel/osrelease
@@ -25,7 +23,7 @@ unsigned long get_cpu_speed(void) {
 
 // /proc/loadavg
 LoadAvg get_loadavg(void) {
-    LoadAvg avg = {0};
+    LoadAvg avg = {0.0, 0.0, 0.0};
     return avg;
 }
 
@@ -35,15 +33,15 @@ unsigned long get_proc_total(void) {
 
 // /proc/meminfo
 MemInfo get_mem_info(void) {
-    MemInfo info = {0};
+    MemInfo info = {0, 0, 0, 0, 0, 0, 0};
     return info;
 }
 
 DiskInfo get_disk_info(void) {
-	DiskInfo info = {0};
+	DiskInfo info = {0, 0};
 	return info;
 }
 
 double get_uptime(void) {
-    return 0;
+    return 0.0;
 }
