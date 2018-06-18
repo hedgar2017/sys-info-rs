@@ -25,5 +25,4 @@ path = "lib.rs"
 cc = "1"
 
 [dependencies]
-libc = "0.2.42"
 failure = "0.1.1"

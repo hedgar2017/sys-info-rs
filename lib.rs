@@ -3,7 +3,6 @@
 //! For now it supports Linux, Android, Windows and FreeBSD.
 //!
 
-extern crate libc;
 #[macro_use] extern crate failure;
 
 use std::{
