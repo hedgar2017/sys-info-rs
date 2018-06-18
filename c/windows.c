@@ -1,7 +1,11 @@
 #include <Windows.h>
 #include <stdio.h>
+#include <psapi.h>
+#include <intrin.h>
 
 #include "info.h"
+
+#pragma intrinsic(__rdtsc)
 
 /* Internal declarations */
 
