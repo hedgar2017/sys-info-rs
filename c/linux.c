@@ -1,25 +1,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <linux/sysctl.h>
 #include <errno.h>
-
+#include <unistd.h>
+#include <sys/utsname.h>
+#include <sys/syscall.h>
 #include <sys/sysinfo.h>
 #include <sys/statvfs.h>
 
 #include "info.h"
 
 /* Internal declarations */
-struct nlist {
+typedef struct nlist {
 	struct nlist *next;
 	char *name;
-};
+} nlist;
 
-#define BUFLEN 256
+#define BUFLEN 1024
 #define DFHASHSIZE 101
+#define UNUSED(x) (void)(x)
 
 static struct nlist *DFhashvector[DFHASHSIZE];
 unsigned int DFhash(const char*);
@@ -30,64 +29,129 @@ float device_space(char*, char*, double*, double*);
 
 /* External definitions */
 
-/*
-    Dummy function.
-    /proc/sys/kernel/ostype
-    is used directly from Rust.
-*/
-const char *get_os_type(void) {
-    return NULL;
+int get_os_type(char *buf, size_t size) {
+    struct utsname info;
+    if (-1 == uname(&info)) {
+        return errno;
+    }
+    strncpy(buf, info.sysname, size);
+    return SUCCESS;
 }
 
-/*
-    Dummy function.
-    /proc/sys/kernel/osrelease
-    is used directly from Rust.
-*/
-const char *get_os_release(void) {
-	return NULL;
+int get_os_release(char *buf, size_t size) {
+    struct utsname info;
+    if (-1 == uname(&info)) {
+        return errno;
+    }
+    strncpy(buf, info.release, size);
+    return SUCCESS;
 }
 
-unsigned int get_cpu_num(void) {
-	return get_nprocs();
+int get_uptime(int *value) {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        return errno;
+    }
+
+    *value = info.uptime;
+
+    return SUCCESS;
 }
 
-// /proc/cpuinfo
-unsigned long get_cpu_speed(void) {
-    return 0;
+int get_hostname(char *buf, size_t size) {
+    if (-1 == gethostname(buf, size)) {
+        return errno;
+    }
+    return SUCCESS;
 }
 
-// /proc/loadavg
-LoadAvg get_loadavg(void) {
-    LoadAvg avg = {0};
-    return avg;
+int get_cpu_core_count(int *value) {
+	*value = get_nprocs();
+	return SUCCESS;
 }
 
-// /proc/loadavg
-unsigned long get_proc_total(void) {
-    return 0;
+int get_cpu_speed(int *value) {
+	FILE *file = fopen("/proc/cpuinfo", "r");
+	if (NULL == file) {
+		return errno;
+	}
+
+	char buf[BUFLEN];
+	const char *pattern = "cpu MHz";
+	while (NULL != fgets(buf, BUFLEN, file)) {
+	    if (0 != strncmp(buf, pattern, sizeof(pattern)-1)) {
+	        continue;
+	    }
+        char *ptr = buf;
+        while (':' != *ptr) {
+            ++ptr;
+            if ('\0' == *ptr) return -1;
+        }
+        ++ptr;
+        *value = atoi(ptr);
+        return (*value > 0 ? SUCCESS : -1);
+	}
+
+    return -1;
 }
 
-// /proc/meminfo
-MemInfo get_mem_info(void) {
-    MemInfo info = {0};
-    return info;
+int get_cpu_load_average(LoadAverage *data) {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        return errno;
+    }
+
+    data->one = ((double) info.loads[0]) / ((double) (1 << SI_LOAD_SHIFT));
+    data->five = ((double) info.loads[1]) / ((double) (1 << SI_LOAD_SHIFT));
+    data->fifteen = ((double) info.loads[2]) / ((double) (1 << SI_LOAD_SHIFT));
+
+    return SUCCESS;
 }
 
-DiskInfo get_disk_info(void) {
-	FILE *mounts;
+int get_process_count(int *value) {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        return errno;
+    }
+
+    *value = info.procs;
+
+    return SUCCESS;
+}
+
+int get_memory_info(MemoryInfo *data) {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        return errno;
+    }
+
+    data->free = info.freeram;
+    data->total = info.totalram;
+
+    return SUCCESS;
+}
+
+int get_swap_info(SwapInfo *data) {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        return errno;
+    }
+
+    data->free = info.freeswap;
+    data->total = info.totalswap;
+
+    return SUCCESS;
+}
+
+int get_disk_info(DiskInfo *data) {
 	char procline[1024];
 	char *mount, *device, *type, *mode, *other;
 	float thispct, max=0.0;
-	double dtotal=0.0, dfree=0.0;
-	DiskInfo di;
-	
-	di.total = 0;
-	di.free = 0;
+	double dtotal = 0.0, dfree = 0.0;
 
-	mounts = fopen("/proc/mounts", "r");
-	if (!mounts) {
-		return di;
+	FILE *mounts = fopen("/proc/mounts", "r");
+	if (NULL == mounts) {
+		return -1;
 	}
 	while ( fgets(procline, sizeof(procline), mounts) ) {
 		device = procline;
@@ -111,31 +175,26 @@ DiskInfo get_disk_info(void) {
 			max = thispct;
 	}
 	fclose(mounts);
-
 	DFcleanup();
-	di.total = dtotal / 1000;
-	di.free = dfree / 1000;
-	
-	return di;
-}
 
-// /proc/uptime
-double get_uptime(void) {
-    return 0;
+	data->free = dfree;
+	data->total = dtotal;
+
+	return SUCCESS;
 }
 
 /* Internal definitions */
-unsigned int DFhash(const char *s)
-{
+
+unsigned int DFhash(const char *s) {
 	unsigned int hashval;
-	for (hashval=0; *s != '\0'; s++)
+	for (hashval=0; *s != '\0'; s++) {
 		hashval = *s + 31 * hashval;
+	}
 	return hashval % DFHASHSIZE;
 }
 
 /* From K&R C book, pp. 144-145 */
-struct nlist * seen_before(const char *name)
-{
+nlist *seen_before(const char *name) {
 	struct nlist *found=0, *np;
 	unsigned int hashval;
 
@@ -147,21 +206,20 @@ struct nlist * seen_before(const char *name)
 			break;
 		}
 	}
-	if (!found) {    /* not found */
+	if (!found) {
 		np = (struct nlist *) malloc(sizeof(*np));
-		if (!np || !(np->name = (char *) strdup(name)))
-			return NULL;
+		if (!np || !(np->name = (char *) strdup(name))) {
+		    return NULL;
+		}
 		np->next = DFhashvector[hashval];
 		DFhashvector[hashval] = np;
 		return NULL;
 	}
-	else /* found name */
-		return found;
+    return found;
 }
 
-void DFcleanup()
-{
-	struct nlist *np, *next;
+void DFcleanup() {
+	nlist *np, *next;
 	for (int i = 0; i < DFHASHSIZE; i++) {
 		/* Non-standard for loop. Note the last clause happens at the end of the loop. */
 		for (np = DFhashvector[i]; np; np=next) {
@@ -173,8 +231,7 @@ void DFcleanup()
 	}
 }
 
-int remote_mount(const char *device, const char *type)
-{
+int remote_mount(const char *device, const char *type) {
 	/* From ME_REMOTE macro in mountlist.h:
 	      A file system is `remote' if its Fs_name contains a `:'
 	      or if (it is of type smbfs and its Fs_name starts with `//'). */
@@ -184,8 +241,7 @@ int remote_mount(const char *device, const char *type)
 		|| (!strcmp(type,"gfs")) || (!strcmp(type,"none")) );
 }
 
-float device_space(char *mount, char *device, double *total_size, double *total_free)
-{
+float device_space(char *mount, char *device, double *total_size, double *total_free) {
 	struct statvfs svfs;
 	double blocksize;
 	double free;

@@ -1,39 +1,44 @@
 #ifndef INFO_H_
 #define INFO_H_
 
-typedef struct LoadAvg {
+#include <stdlib.h>
+
+typedef struct LoadAverage {
     double one;
     double five;
     double fifteen;
-} LoadAvg;
+} LoadAverage;
 
-typedef struct MemInfo {
-    unsigned long long total;
+typedef struct MemoryInfo {
     unsigned long long free;
-    unsigned long long avail;
-    unsigned long long buffers;
-    unsigned long long cached;
-    unsigned long long swap_total;
-    unsigned long long swap_free;
-} MemInfo;
+    unsigned long long total;
+} MemoryInfo;
+
+typedef struct SwapInfo {
+    unsigned long long free;
+    unsigned long long total;
+} SwapInfo;
 
 typedef struct DiskInfo {
-    unsigned long long total;
     unsigned long long free;
+    unsigned long long total;
 } DiskInfo;
 
-const char          *get_os_type(void);
-const char          *get_os_release(void);
+#define SUCCESS 0
 
-unsigned int        get_cpu_num(void);
-unsigned long       get_cpu_speed(void);
+int                 get_os_type(char *buf, size_t size);
+int                 get_os_release(char *buf, size_t size);
 
-LoadAvg             get_loadavg(void);
-unsigned long       get_proc_total(void);
+int                 get_uptime(int *value);
+int                 get_hostname(char *buf, size_t size);
 
-MemInfo             get_mem_info(void);
-DiskInfo            get_disk_info(void);
+int                 get_cpu_core_count(int *value);
+int                 get_cpu_speed(int *value);
+int                 get_cpu_load_average(LoadAverage *data);
+int                 get_process_count(int *value);
 
-double              get_uptime(void);
+int                 get_memory_info(MemoryInfo *data);
+int                 get_swap_info(SwapInfo *data);
+int                 get_disk_info(DiskInfo *data);
 
 #endif

@@ -20,98 +20,86 @@ static int skipvfs;
 
 /* External definitions */
 
-const char *get_os_type(void) {
-	char *s, buf[LEN];
-	size_t len;
-	int mib[2];
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_OSTYPE;
-	s = malloc(LEN);
-	len = sizeof(buf);
-	
-	if (sysctl(mib, 2, &buf, &len, NULL, 0) == -1)
-		strncpy(s, "Darwin", len);
-	strncpy(s, buf, len);
-
-	return s;
+int get_os_type(char *buf, size_t size) {
+	int mib[] = {CTL_KERN, KERN_OSTYPE};
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), buf, &size, NULL, 0) == -1) {
+        return errno;
+    }
+    return SUCCESS;
 }
 
-const char *get_os_release(void) {
-	char *s, buf[LEN];
-	size_t len;
-	int mib[2];
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_OSRELEASE;
-	s = malloc(LEN);
-	len = sizeof(buf);
-
-	if (sysctl(mib, 2, &buf, &len, NULL, 0) == -1)
-		strncpy(s, "Unknown", len);
-	strncpy(s, buf, len);
-
-	return s;
+int get_os_release(char *buf, size_t size) {
+	int mib[] = {CTL_KERN, KERN_OSRELEASE};
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), buf, &size, NULL, 0) == -1) {
+        return errno;
+    }
+    return SUCCESS;
 }
 
-unsigned int get_cpu_num(void) {
-	unsigned int num;
-	int mib[2];
-	size_t len;
+int get_uptime(int *value) {
+    int mib[] = {CTL_KERN, KERN_BOOTTIME};
+	struct timeval boottime;
+    size_t len = sizeof(boottime);
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), &boottime, &len, NULL, 0) == -1) {
+        return errno;
+    }
 
-	mib[0] = CTL_HW;
-	mib[1] = HW_NCPU;
-	len = sizeof(num);
-
-	if (sysctl(mib, 2, &num, &len, NULL, 0) == -1 || !len)
-		num = 1;
-
-	return num;
+    time_t secs_current = time(NULL);
+    time_t secs_boot = ((double) boottime.tv_sec) + ((double) boottime.tv_usec) * 1E-6;
+    *value = (int) difftime(secs_current, secs_boot);
+    return SUCCESS;
 }
 
-unsigned long get_cpu_speed(void) {
-	unsigned long speed;
-	size_t len;
-	
-	len = sizeof(speed);
-	sysctlbyname("hw.cpufrequency", &speed, &len, NULL, 0);
-	speed /= 1000000;
-
-	return speed;
+int get_hostname(char *buf, size_t size) {
+    return SUCCESS;
 }
 
-LoadAvg get_loadavg(void) {
-	double loads[3];
-	LoadAvg la;
-	
-	getloadavg(loads, 3);
-	la.one = loads[0];
-	la.five = loads[1];
-	la.fifteen = loads[2];
-	
-	return la;
+int get_cpu_core_count(int *value) {
+    int mib[] = {CTL_HW, HW_NCPU};
+	size_t len = sizeof(*value);
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), value, &size, NULL, 0) == -1) {
+        return errno;
+    }
+    return SUCCESS;
 }
 
-unsigned long get_proc_total(void) {
-	int mib[3];
-	size_t len;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_ALL;
-
-	sysctl(mib, 3, NULL, &len, NULL, 0);
-	
-	return len / sizeof(struct kinfo_proc);
+int get_cpu_speed(int *value) {
+	size_t len = sizeof(*value);
+	sysctlbyname("hw.cpufrequency", value, &len, NULL, 0);
+	*value /= 1E6;
+	return SUCCESS;
 }
 
-MemInfo get_mem_info(void) {
+int get_cpu_load_average(LoadAverage *data) {
+	double buf[3];
+	int samples = getloadavg(buf, 3);
+	if (-1 == samples) {
+	    return errno;
+	}
+
+	data->one = (samples > 0 ? buf[0] : 0.0);
+	data->five = (samples > 1 ? buf[1] : 0.0);
+	data->fifteen = (samples > 2 ? buf[2] : 0.0);
+
+	return SUCCESS;
+}
+
+int get_process_count(int *value) {
+	int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL};
+	size_t len = 0;
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), NULL, &len, NULL, 0) == -1) {
+        return errno;
+    }
+	*value = len / sizeof(struct kinfo_proc);
+	return SUCCESS;
+}
+
+int get_memory_info(MemoryInfo *data) {
 	static unsigned long long size = 0;
 	size_t len;
 	int mib[2];
 	vm_statistics_data_t vm_stat;
 	mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
-	MemInfo mi;
 
 	if (size == 0) {
 		mib[0] = CTL_HW;
@@ -124,19 +112,17 @@ MemInfo get_mem_info(void) {
 	host_statistics(mach_host_self(), HOST_VM_INFO,
 				(host_info_t)&vm_stat, &count);
 
-	mi.total       = size;
-	mi.avail       = vm_stat.active_count * PAGE_SIZE / 1024;
-	mi.free        = vm_stat.free_count * PAGE_SIZE / 1024;
-	mi.buffers     = 0;
-	mi.cached      = 0;
-	mi.swap_total  = 0;
-	mi.swap_free   = 0;
+	data->free        = vm_stat.free_count * PAGE_SIZE / 1024;
+	data->total       = size;
 
-	return mi;
+	return SUCCESS;
 }
 
-DiskInfo get_disk_info(void) {
-	DiskInfo di;
+int get_swap_info(SwapInfo *data) {
+    return SUCCESS;
+}
+
+int get_disk_info(DiskInfo *data) {
 	struct statfs *mntbuf;
 	const char **vfslist;
 	char *str;
@@ -169,25 +155,13 @@ DiskInfo get_disk_info(void) {
 	}
 
 	free(vfslist);
-	di.total = dtotal * 1000000;
-	di.free = dfree * 1000000;
-	return di;
-}
-
-double get_uptime(void) {
-	struct timeval boottime;
-    size_t len = sizeof(boottime);
-    int mib[2] = {CTL_KERN, KERN_BOOTTIME};
-    if (sysctl(mib, 2, &boottime, &len, NULL, 0) < 0) {
-        return -1.0;
-    }
-
-    time_t secs_current = time(NULL);
-    time_t secs_boot = ((double) tv.tv_sec) + ((double) tv.tv_usec) * 1E-6;
-    return difftime(secs_current, secs_boot);
+	data->total = dtotal * 1000000;
+	data->free = dfree * 1000000;
+	return SUCCESS;
 }
 
 /* Internal definitions */
+
 const char **makevfslist(char *fslist) {
 	const char **av;
 	int i;
