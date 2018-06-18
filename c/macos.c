@@ -8,6 +8,7 @@
 #include "info.h"
 
 #define LEN 20
+#define BUFLEN 1024
 #define MNT_IGNORE 0
 
 /* Internal declarations */
@@ -51,6 +52,9 @@ int get_uptime(int *value) {
 }
 
 int get_hostname(char *buf, size_t size) {
+    if (0 != gethostname(buf, size)) {
+        return errno;
+    }
     return SUCCESS;
 }
 
@@ -65,7 +69,9 @@ int get_cpu_core_count(int *value) {
 
 int get_cpu_speed(int *value) {
 	size_t len = sizeof(*value);
-	sysctlbyname("hw.cpufrequency", value, &len, NULL, 0);
+	if (sysctlbyname("hw.cpufrequency", value, &len, NULL, 0) == -1) {
+        return errno;
+    }
 	*value /= 1E6;
 	return SUCCESS;
 }
@@ -95,30 +101,41 @@ int get_process_count(int *value) {
 }
 
 int get_memory_info(MemoryInfo *data) {
-	static unsigned long long size = 0;
-	size_t len;
-	int mib[2];
+	int mib[] = {CTL_HW, HW_MEMSIZE};
+	unsigned long long total = 0;
+	size_t len = sizeof(total);
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), &total, &len, NULL, 0) == -1) {
+        return errno;
+    }
+
 	vm_statistics_data_t vm_stat;
 	mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
+	host_statistics(mach_host_self(), HOST_VM_INFO,	(host_info_t) &vm_stat, &count);
 
-	if (size == 0) {
-		mib[0] = CTL_HW;
-		mib[1] = HW_MEMSIZE;
-		len = sizeof(size);
-		sysctl(mib, 2, &size, &len, NULL, 0);
-		size /= 1024;
-	}
-	
-	host_statistics(mach_host_self(), HOST_VM_INFO,
-				(host_info_t)&vm_stat, &count);
-
-	data->free        = vm_stat.free_count * PAGE_SIZE / 1024;
-	data->total       = size;
+	data->free        = vm_stat.free_count * PAGE_SIZE;
+	data->total       = total;
 
 	return SUCCESS;
 }
 
 int get_swap_info(SwapInfo *data) {
+    char buf[BUFLEN];
+    size_t size = sizeof(buf);
+
+    double free = 0.0;
+    double total = 0.0;
+
+    if (sysctlbyname("vm.swapusage", buf, &size, NULL, 0) == -1) {
+        return errno;
+    }
+
+    if (0 == sscanf(buf, "%*s %*s %lf%*c  %*s %*s %*lf%*c  %*s %*s %lf%*c", &total, &free)) {
+        return -1;
+    }
+
+    data->free = free;
+    data->total = total;
+
     return SUCCESS;
 }
 
@@ -155,8 +172,8 @@ int get_disk_info(DiskInfo *data) {
 	}
 
 	free(vfslist);
-	data->total = dtotal * 1000000;
-	data->free = dfree * 1000000;
+	data->total = dtotal * 1000;
+	data->free = dfree * 1000;
 	return SUCCESS;
 }
 
