@@ -7,10 +7,8 @@ extern crate libc;
 #[macro_use] extern crate failure;
 
 use std::{
-    ffi,
-    io,
-    num,
     os::raw::c_char,
+    ffi::CStr,
 };
 
 #[repr(C)]
@@ -48,28 +46,6 @@ pub enum Error {
     UnsupportedSystem,
     #[fail(display = "System code: {}", _0)]
     SystemCode(i32),
-    #[fail(display = "File system: {}", _0)]
-    FileSystem(io::Error),
-    #[fail(display = "/proc/* parsing")]
-    ProcParsing,
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Error {
-        Error::FileSystem(e)
-    }
-}
-
-impl From<num::ParseIntError> for Error {
-    fn from(_e: num::ParseIntError) -> Error {
-        Error::ProcParsing
-    }
-}
-
-impl From<num::ParseFloatError> for Error {
-    fn from(_e: num::ParseFloatError) -> Error {
-        Error::ProcParsing
-    }
 }
 
 macro_rules! error_if_unsupported {
@@ -113,7 +89,7 @@ pub fn os_type() -> Result<String, Error> {
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
-    let result = unsafe { ffi::CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
+    let result = unsafe { CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
     let result = String::from_utf8_lossy(result).into_owned();
     Ok(result)
 }
@@ -127,7 +103,7 @@ pub fn os_release() -> Result<String, Error> {
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
-    let result = unsafe { ffi::CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
+    let result = unsafe { CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
     let result = String::from_utf8_lossy(result).into_owned();
     Ok(result)
 }
@@ -152,7 +128,7 @@ pub fn hostname() -> Result<String, Error> {
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
-    let result = unsafe { ffi::CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
+    let result = unsafe { CStr::from_ptr(&buf[0] as *const c_char).to_bytes() };
     let result = String::from_utf8_lossy(result).into_owned();
     Ok(result)
 }
