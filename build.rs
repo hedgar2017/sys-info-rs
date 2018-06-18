@@ -11,7 +11,7 @@ fn main() {
             println!("cargo:rustc-flags=-l kvm");
             builder.file("c/freebsd.c")
         },
-        "macos" | "ios" => builder.file("c/macos.c"),
+        "darwin" | "ios" => builder.file("c/macos.c"),
         "windows" => {
             println!("cargo:rustc-flags=-l psapi");
             builder.file("c/windows.c")
