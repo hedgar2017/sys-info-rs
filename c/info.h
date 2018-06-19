@@ -19,11 +19,6 @@ typedef struct SwapInfo {
     unsigned long long total;
 } SwapInfo;
 
-typedef struct DiskInfo {
-    unsigned long long free;
-    unsigned long long total;
-} DiskInfo;
-
 #define SUCCESS 0
 
 int                 get_os_type(char *buf, size_t size);
@@ -39,6 +34,5 @@ int                 get_process_count(int *value);
 
 int                 get_memory_info(MemoryInfo *data);
 int                 get_swap_info(SwapInfo *data);
-int                 get_disk_info(DiskInfo *data);
 
 #endif

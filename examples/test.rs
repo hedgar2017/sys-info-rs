@@ -22,6 +22,4 @@ fn main() {
     println!("Memory info       : free {} bytes, total {} bytes", memory.free, memory.total);
     let swap = swap_info().unwrap_or(SwapInfo {free: 0, total: 0});
     println!("Swap info         : free {} bytes, total {} bytes", swap.free, swap.total);
-    let disk = disk_info().unwrap_or(DiskInfo {free: 0, total: 0});
-    println!("Disk info         : free {} bytes, total {} bytes", disk.free, disk.total);
 }

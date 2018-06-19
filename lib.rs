@@ -1,6 +1,6 @@
 //!
 //! This crate focuses on getting system information.
-//! For now it supports Linux, Android, Windows and FreeBSD.
+//! For now it supports Linux, Android, Windows, FreeBSD and MacOS.
 //!
 
 #[macro_use] extern crate failure;
@@ -28,13 +28,6 @@ pub struct MemoryInfo {
 #[repr(C)]
 #[derive(Debug)]
 pub struct SwapInfo {
-    pub free: u64,
-    pub total: u64,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-pub struct DiskInfo {
     pub free: u64,
     pub total: u64,
 }
@@ -76,7 +69,6 @@ extern "C" {
 
     fn get_memory_info(value: &MemoryInfo) -> i32;
     fn get_swap_info(value: &SwapInfo) -> i32;
-    fn get_disk_info(value: &DiskInfo) -> i32;
 }
 
 pub fn os_type() -> Result<String, Error> {
@@ -201,17 +193,6 @@ pub fn swap_info() -> Result<SwapInfo, Error> {
     Ok(info)
 }
 
-pub fn disk_info() -> Result<DiskInfo, Error> {
-    error_if_unsupported!();
-
-    let info = DiskInfo {free: 0, total: 0};
-    let result = unsafe { get_disk_info(&info) };
-    if result != 0 {
-        return Err(Error::SystemCode(result));
-    }
-    Ok(info)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -298,13 +279,4 @@ mod test {
             .map_err(|error| assert!(false, error.to_string()));
     }
 
-    #[test]
-    pub fn test_disk_info() {
-        let _ = disk_info()
-            .map(|value| {
-                assert!(value.free > 0, "Zero is very unlikely");
-                assert!(value.total > 0, "Zero is very unlikely");
-            })
-            .map_err(|error| assert!(false, error.to_string()));
-    }
 }

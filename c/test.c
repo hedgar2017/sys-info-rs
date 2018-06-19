@@ -10,7 +10,6 @@ int main(void) {
     LoadAverage load = {.one = 0.0, .five = 0.0, .fifteen = 0.0};
     MemoryInfo memory = {.free = 0, .total = 0};
     SwapInfo swap = {.free = 0, .total = 0};
-    DiskInfo disk = {.free = 0, .total = 0};
 
     get_os_type(buf, BUFSIZE);
 	printf("OS type           : %s\n", buf);
@@ -35,8 +34,6 @@ int main(void) {
     printf("Memory info       : free %llu bytes, total %llu bytes\n", memory.free, memory.total);
     get_swap_info(&swap);
     printf("Swap info         : free %llu bytes, total %llu bytes\n", swap.free, swap.total);
-    get_disk_info(&disk);
-    printf("Disk info         : free %llu bytes, total %llu bytes\n", disk.free, disk.total);
 
 	return EXIT_SUCCESS;
 }

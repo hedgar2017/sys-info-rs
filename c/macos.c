@@ -7,17 +7,7 @@
 
 #include "info.h"
 
-#define LEN 20
 #define BUFLEN 1024
-#define MNT_IGNORE 0
-
-/* Internal declarations */
-static size_t regetmntinfo(struct statfs **mntbufp, long mntsize, const char **vfslist);
-static const char **makevfslist(char *fslist);
-static int checkvfsname(const char *vfsname, const char **vfslist);
-static char *makenetvfslist(void);
-
-static int skipvfs;
 
 /* External definitions */
 
@@ -119,173 +109,15 @@ int get_memory_info(MemoryInfo *data) {
 }
 
 int get_swap_info(SwapInfo *data) {
-    char buf[BUFLEN];
-    size_t size = sizeof(buf);
+    struct xsw_usage xsu;
+    size_t len = sizeof xsu;
 
-    double free = 0.0;
-    double total = 0.0;
-
-    if (sysctlbyname("vm.swapusage", buf, &size, NULL, 0) == -1) {
+    if (sysctlbyname("vm.swapusage", &xsu, &len, NULL, 0) == -1) {
         return errno;
     }
 
-    if (0 == sscanf(buf, "%*s %*s %lf%*c  %*s %*s %*lf%*c  %*s %*s %lf%*c", &total, &free)) {
-        return -1;
-    }
-
-    data->free = free;
-    data->total = total;
+    data->free = xsu.xsu_avail;
+    data->total = xsu.xsu_total;
 
     return SUCCESS;
-}
-
-int get_disk_info(DiskInfo *data) {
-	struct statfs *mntbuf;
-	const char **vfslist;
-	char *str;
-	size_t i, mntsize;
-	size_t used, availblks;
-	const double reported_units = 1e9;
-	float pct;
-	float most_full = 0.0;
-	double toru, dtotal = 0.0, dfree = 0.0;
-
-	str = makenetvfslist();
-	vfslist = makevfslist(str);
-	free(str);
-
-	mntsize = getmntinfo(&mntbuf, MNT_NOWAIT);
-	mntsize = regetmntinfo(&mntbuf, mntsize, vfslist);
-
-	for (i = 0; i < mntsize; i++) {
-		if ((mntbuf[i].f_flags & MNT_IGNORE) == 0) {
-			used = mntbuf[i].f_blocks - mntbuf[i].f_bfree;
-			availblks = mntbuf[i].f_bavail + used;
-			pct = (availblks == 0 ? 100.0 :
-			       (double)used / (double)availblks * 100.0);
-			if (pct > most_full)
-				most_full = pct;
-			toru = reported_units / mntbuf[i].f_bsize;
-			dtotal += mntbuf[i].f_blocks / toru;
-			dfree += mntbuf[i].f_bavail / toru;
-		}
-	}
-
-	free(vfslist);
-	data->total = dtotal * 1000;
-	data->free = dfree * 1000;
-	return SUCCESS;
-}
-
-/* Internal definitions */
-
-const char **makevfslist(char *fslist) {
-	const char **av;
-	int i;
-	char *nextcp;
-
-	if (fslist == NULL)
-		return (NULL);
-	if (fslist[0] == 'n' && fslist[1] == 'o') {
-		fslist += 2;
-		skipvfs = 1;
-	}
-	for (i = 0, nextcp = fslist; *nextcp; nextcp++)
-		if (*nextcp == ',')
-			i++;
-	if ((av = (const char**)malloc((size_t)(i + 2) * sizeof(char *))) == NULL) {
-		return (NULL);
-	}
-	nextcp = fslist;
-	i = 0;
-	av[i++] = nextcp;
-	while ((nextcp = strchr(nextcp, ',')) != NULL) {
-		*nextcp++ = '\0';
-		av[i++] = nextcp;
-	}
-	av[i++] = NULL;
-
-	return (av);
-
-}
-
-size_t regetmntinfo(struct statfs **mntbufp, long mntsize,
-		    const char **vfslist) {
-	int i, j;
-	struct statfs *mntbuf;
-
-	if (vfslist == NULL)
-		return (getmntinfo(mntbufp, MNT_WAIT));
-
-	mntbuf = *mntbufp;
-	for (j = 0, i = 0; i < mntsize; i++) {
-		if (checkvfsname(mntbuf[i].f_fstypename, vfslist))
-			continue;
-		(void)statfs(mntbuf[i].f_mntonname,&mntbuf[j]);
-		j++;
-	}
-	return (j);
-}
-
-int checkvfsname(const char *vfsname, const char **vfslist) {
-
-	if (vfslist == NULL)
-		return (0);
-	while (*vfslist != NULL) {
-		if (strcmp(vfsname, *vfslist) == 0)
-			return (skipvfs);
-		++vfslist;
-	}
-	return (!skipvfs);
-}
-
-char *makenetvfslist(void){
-	char *str, *strptr, **listptr;
-	int mib[4], maxvfsconf, cnt=0, i;
-	size_t miblen;
-	struct vfsconf vfc;
-
-	mib[0] = CTL_VFS;
-	mib[1] = VFS_GENERIC;
-	mib[2] = VFS_MAXTYPENUM;
-	miblen=sizeof(maxvfsconf);
-	if (sysctl(mib, 3, &maxvfsconf, &miblen, NULL, 0)) {
-		return (NULL);
-	}
-
-	if ((listptr = (char**)malloc(sizeof(char*)*maxvfsconf)) == NULL) {
-		return (NULL);
-	}
-
-	miblen = sizeof (struct vfsconf);
-	mib[2] = VFS_CONF;
-	for (i = 0; i < maxvfsconf; i++) {
-		mib[3] = i;
-		if (sysctl(mib, 4, &vfc, &miblen, NULL, 0) == 0) {
-			if (!(vfc.vfc_flags & MNT_LOCAL)) {
-				listptr[cnt++] = strdup(vfc.vfc_name);
-				if (listptr[cnt-1] == NULL) {
-					return (NULL);
-				}
-			}
-		}
-	}
-
-	if (cnt == 0 ||
-	    (str = (char*)malloc(sizeof(char) * (32 * cnt + cnt + 2))) == NULL) {
-		free(listptr);
-		return (NULL);
-	}
-
-	*str = 'n';
-	*(str + 1) = 'o';
-	for (i = 0, strptr = str + 2; i < cnt; i++, strptr++) {
-		strncpy(strptr, listptr[i], 32);
-		strptr += strlen(listptr[i]);
-		*strptr = ',';
-		free(listptr[i]);
-	}
-	*(--strptr) = NULL;
-	free(listptr);
-	return (str);
 }

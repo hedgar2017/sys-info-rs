@@ -113,26 +113,6 @@ int get_swap_info(SwapInfo *data) {
 	return SUCCESS;
 }
 
-int get_disk_info(DiskInfo *data) {
-    DWORD drive_mask = GetLogicalDrives();
-    ULARGE_INTEGER free = {0};
-    ULARGE_INTEGER total = {0};
-
-    char *drive = "A:";
-    for (int i = 0; i < sizeof(DWORD) * 8; ++i, ++drive[0]) {
-        if (0 == (drive_mask & (1 << i))) {
-            continue;
-        }
-        if (!GetDiskFreeSpaceEx(drive, NULL, &total, &free)) {
-            continue;
-        }
-        data->free += free.QuadPart;
-        data->total += total.QuadPart;
-    }
-
-	return SUCCESS;
-}
-
 /* Internal definitions */
 
 double calculate_cpu_load(unsigned long long idle_ticks, unsigned long long total_ticks) {

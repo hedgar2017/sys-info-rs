@@ -126,18 +126,3 @@ int get_swap_info(SwapInfo *data) {
     kvm_close(kd);
     return SUCCESS;
 }
-
-int get_disk_info(DiskInfo *data) {
-	struct statfs *mntbuf;
-	int mntsize = getmntinfo(&mntbuf, MNT_NOWAIT);
-	if (0 == mntsize) {
-	    return errno;
-	}
-
-	for (int i = 0; i < mntsize; ++i) {
-        data->free += mntbuf[i].f_bfree * mntbuf[i].f_bsize;
-        data->total += mntbuf[i].f_blocks * mntbuf[i].f_bsize;
-	}
-
-	return SUCCESS;
-}
