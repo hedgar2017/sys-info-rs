@@ -2,16 +2,15 @@
 
 name = "sys-info"
 version = "0.5.6"
-authors = ["Siyu Wang <FillZpp.pub@gmail.com>"]
+authors = ["hedgar2017 <hedgar2017@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-keywords = ["system", "cpu", "disk", "memory", "information"]
-repository = "https://github.com/FillZpp/sys-info-rs"
-documentation = "https://docs.rs/sys-info/0.5.6/sys_info/"
+keywords = ["system", "information", "cpu", "memory"]
+repository = "https://github.com/hedgar2017/sys-info-rs"
 description = """
 Get system information in Rust.
 
-For now it supports Linux, Mac OS X and Windows.
+For now it supports Linux, Mac OS X, Windows and FreeBSD.
 """
 
 links = "info"
