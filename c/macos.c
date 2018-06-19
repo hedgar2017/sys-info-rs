@@ -1,4 +1,7 @@
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/sysctl.h>
 #include <mach/mach_init.h>
@@ -50,7 +53,7 @@ int get_hostname(char *buf, size_t size) {
 
 int get_cpu_core_count(int *value) {
     int mib[] = {CTL_HW, HW_NCPU};
-	size_t len = sizeof(*value);
+	size_t size = sizeof(*value);
     if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), value, &size, NULL, 0) == -1) {
         return errno;
     }
@@ -58,11 +61,15 @@ int get_cpu_core_count(int *value) {
 }
 
 int get_cpu_speed(int *value) {
-	size_t len = sizeof(*value);
-	if (sysctlbyname("hw.cpufrequency", value, &len, NULL, 0) == -1) {
-        return errno;
-    }
-	*value /= 1E6;
+	unsigned long speed;
+	size_t len;
+	
+	len = sizeof(speed);
+	sysctlbyname("hw.cpufrequency", &speed, &len, NULL, 0);
+	speed /= 1000000;
+
+	*value = speed;
+
 	return SUCCESS;
 }
 

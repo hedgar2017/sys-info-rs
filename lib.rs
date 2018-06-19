@@ -263,8 +263,6 @@ mod test {
             .map(|value| {
                 assert!(value.free > 0, "Zero is very unlikely");
                 assert!(value.total > 0, "Zero is very unlikely");
-                assert!(value.swap_free > 0, "Zero is very unlikely");
-                assert!(value.swap_total > 0, "Zero is very unlikely");
             })
             .map_err(|error| assert!(false, error.to_string()));
     }
