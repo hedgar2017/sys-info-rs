@@ -56,11 +56,11 @@ macro_rules! error_if_unsupported {
 }
 
 extern "C" {
-    fn get_os_type(buf: *mut i8, size: usize) -> i32;
-    fn get_os_release(buf: *mut i8, size: usize) -> i32;
+    fn get_os_type(buf: *mut c_char, size: usize) -> i32;
+    fn get_os_release(buf: *mut c_char, size: usize) -> i32;
 
     fn get_uptime(value: *mut i32) -> i32;
-    fn get_hostname(buf: *mut i8, size: usize) -> i32;
+    fn get_hostname(buf: *mut c_char, size: usize) -> i32;
 
     fn get_cpu_core_count(value: *mut i32) -> i32;
     fn get_cpu_speed(value: *mut i32) -> i32;
@@ -75,8 +75,8 @@ pub fn os_type() -> Result<String, Error> {
     error_if_unsupported!();
 
     const SIZE: usize = 256;
-    let mut buf = [0i8; SIZE];
-    let result = unsafe { get_os_type(&mut buf[0] as *mut i8, SIZE) };
+    let mut buf: [c_char; SIZE] = [0; SIZE];
+    let result = unsafe { get_os_type(&mut buf[0] as *mut c_char, SIZE) };
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
@@ -89,8 +89,8 @@ pub fn os_release() -> Result<String, Error> {
     error_if_unsupported!();
 
     const SIZE: usize = 256;
-    let mut buf = [0i8; SIZE];
-    let result = unsafe { get_os_release(&mut buf[0] as *mut i8, SIZE) };
+    let mut buf: [c_char; SIZE] = [0; SIZE];
+    let result = unsafe { get_os_release(&mut buf[0] as *mut c_char, SIZE) };
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
@@ -114,8 +114,8 @@ pub fn hostname() -> Result<String, Error> {
     error_if_unsupported!();
 
     const SIZE: usize = 256;
-    let mut buf = [0i8; SIZE];
-    let result = unsafe { get_hostname(&mut buf[0] as *mut i8, SIZE) };
+    let mut buf: [c_char; SIZE] = [0; SIZE];
+    let result = unsafe { get_hostname(&mut buf[0] as *mut c_char, SIZE) };
     if result != 0 {
         return Err(Error::SystemCode(result));
     }
