@@ -6,7 +6,7 @@ fn main() {
 
     let mut builder = cc::Build::new();
     match target_os {
-        "linux" | "android" | "androidabi" => builder.file("c/linux.c"),
+        "linux" | "android" | "androidabi"| "androideabi" => builder.file("c/linux.c"),
         "freebsd" => {
             println!("cargo:rustc-flags=-l kvm");
             builder.file("c/freebsd.c")
