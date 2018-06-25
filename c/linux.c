@@ -51,11 +51,11 @@ int get_hostname(char *buf, size_t size) {
 }
 
 int get_cpu_core_count(int *value) {
-    #ifdef __ANDROID__
-        *value = sysconf(_SC_NPROCESSORS_ONLN)    
-	#else
-        *value = get_nprocs();
-    #endif
+#ifdef __ANDROID__
+    *value = sysconf(_SC_NPROCESSORS_ONLN);
+#else
+    *value = get_nprocs();
+#endif
 	return SUCCESS;
 }
 
