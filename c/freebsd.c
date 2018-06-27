@@ -7,7 +7,6 @@
 #include <sys/time.h>
 #include <sys/user.h>
 #include <sys/mount.h>
-#include <sys/statvfs.h>
 
 #include "info.h"
 

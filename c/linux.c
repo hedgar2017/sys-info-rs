@@ -6,7 +6,6 @@
 #include <sys/utsname.h>
 #include <sys/syscall.h>
 #include <sys/sysinfo.h>
-#include <sys/statvfs.h>
 
 #include "info.h"
 
