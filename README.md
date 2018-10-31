@@ -2,8 +2,7 @@
 
 Get system information in Rust.
 
-For now it supports Linux, Mac OS X, Windows and FreeBSD.
-And now it can get information of kernel/cpu/memory/load/hostname and so on.
+For now it supports Linux, Windows, FreeBSD, Mac OS X and Android.
 
 ### Usage
 Add this to `Cargo.toml`:
